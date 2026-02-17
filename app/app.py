@@ -1,4 +1,4 @@
-# app.py - Medical Insurance Cost Predictor (Multi-Model Version)
+# app.py - Medical Insurance Cost Predictor (Cloud Compatible)
 
 import streamlit as st
 import joblib
@@ -6,25 +6,85 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
+
 # Page configuration
 st.set_page_config(
     page_title="Medical Insurance Cost Predictor",
     page_icon="🏥",
-    layout="wide"  # Wider layout for model comparison
+    layout="wide"
 )
 
 # ============================================
-# PATH CONFIGURATION
+# PATH CONFIGURATION - WORKS ON LOCAL AND CLOUD
 # ============================================
-MODELS_DIR = r"C:\Users\Ragu\medical_insurance\models"
 
+def get_models_directory():
+    """Find models directory - works locally and on Streamlit Cloud"""
+    
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Possible locations to check
+    possible_paths = [
+        # Same directory as app.py
+        os.path.join(script_dir, "models"),
+        # Parent directory (app/models)
+        os.path.join(script_dir, "..", "models"),
+        # Grandparent directory (project root/models)
+        os.path.join(script_dir, "..", "..", "models"),
+        # Streamlit Cloud specific path
+        "/mount/src/ins_app/models",
+        # Alternative cloud path
+        os.path.join(os.getcwd(), "models"),
+    ]
+    
+    # Check each path
+    for path in possible_paths:
+        path = os.path.abspath(path)
+        if os.path.exists(path):
+            # Verify it has .pkl files
+            files = os.listdir(path)
+            if any(f.endswith('.pkl') for f in files):
+                return path
+    
+    # If not found, return the most likely path and show error later
+    return os.path.join(script_dir, "..", "models")
+
+# Get the models directory
+MODELS_DIR = get_models_directory()
+
+# Debug info in sidebar
 st.sidebar.markdown("---")
-st.sidebar.caption(f"📁 Models directory:")
-st.sidebar.caption(f"`{MODELS_DIR}`")
+st.sidebar.caption("🔧 Debug Info")
 
+# Check if directory exists
 if not os.path.exists(MODELS_DIR):
-    st.error(f"❌ Directory not found: `{MODELS_DIR}`")
+    st.sidebar.error(f"❌ Directory not found: {MODELS_DIR}")
+    st.error("❌ Models directory not found!")
+    
+    # Show debugging info
+    st.write("### Debugging Information")
+    st.write(f"Script location: `{os.path.abspath(__file__)}`")
+    st.write(f"Current working directory: `{os.getcwd()}`")
+    st.write(f"Looking for models in: `{MODELS_DIR}`")
+    
+    # List what's actually available
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    st.write(f"Contents of `{script_dir}`:")
+    if os.path.exists(script_dir):
+        st.write(os.listdir(script_dir))
+    
+    parent_dir = os.path.dirname(script_dir)
+    if os.path.exists(parent_dir):
+        st.write(f"Contents of parent `{parent_dir}`:")
+        st.write(os.listdir(parent_dir))
+    
     st.stop()
+else:
+    st.sidebar.success(f"✅ Found: {MODELS_DIR}")
+    files = [f for f in os.listdir(MODELS_DIR) if f.endswith('.pkl')]
+    st.sidebar.caption(f"📁 {len(files)} model files found")
+
 
 # ============================================
 # LOAD ALL MODELS
